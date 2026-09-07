@@ -1,0 +1,59 @@
+{
+  "camera_id": "CAM_JUNCTION_01",
+  "name": "MG Road Main Junction Northbound",
+  "fps": 30,
+  "resolution": {
+    "width": 1920,
+    "height": 1080
+  },
+  "lanes": [
+    {
+      "lane_id": 1,
+      "name": "Left Turn Lane",
+      "polygon": [[100, 400], [450, 400], [550, 1080], [0, 1080]],
+      "legal_direction": "LEFT_OR_THROUGH"
+    },
+    {
+      "lane_id": 2,
+      "name": "Through Lane 1",
+      "polygon": [[450, 400], [900, 400], [1200, 1080], [550, 1080]],
+      "legal_direction": "THROUGH"
+    },
+    {
+      "lane_id": 3,
+      "name": "Through Lane 2",
+      "polygon": [[900, 400], [1350, 400], [1700, 1080], [1200, 1080]],
+      "legal_direction": "THROUGH"
+    }
+  ],
+  "counting_lines": [
+    {
+      "line_id": "LINE_IN_NORTH",
+      "name": "Inflow North bound",
+      "coords": [[200, 600], [1600, 600]],
+      "inbound_direction": "DOWN"
+    }
+  ],
+  "stop_lines": [
+    {
+      "line_id": "STOP_LINE_01",
+      "name": "North Signal Stop Line",
+      "coords": [[300, 500], [1500, 500]]
+    }
+  ],
+  "zones": [
+    {
+      "zone_id": "CONFLICT_ZONE_CENTER",
+      "name": "Junction Central Box",
+      "polygon": [[500, 300], [1400, 300], [1500, 700], [400, 700]]
+    }
+  ],
+  "signal_config": {
+    "traffic_light_roi": [1600, 100, 1700, 300],
+    "default_state": "RED"
+  },
+  "calibration": {
+    "pixels_per_meter": 24.5,
+    "perspective_matrix": null
+  }
+}

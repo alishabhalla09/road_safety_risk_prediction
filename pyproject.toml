@@ -1,0 +1,47 @@
+[project]
+name = "roadguard-ai"
+version = "0.1.0"
+description = "RoadGuard AI — Road Safety and Traffic Intelligence Platform"
+authors = [{ name = "RoadGuard Engineering Team" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "sqlalchemy>=2.0.28",
+    "alembic>=1.13.1",
+    "psycopg2-binary>=2.9.9",
+    "opencv-python-headless>=4.9.0.80",
+    "numpy>=1.26.4",
+    "torch>=2.2.0",
+    "ultralytics>=8.1.0",
+    "python-multipart>=0.0.9",
+    "pillow>=10.2.0",
+    "pyyaml>=6.0.1",
+    "shapely>=2.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.0",
+    "pytest-asyncio>=0.23.5",
+    "httpx>=0.27.0",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "N"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"

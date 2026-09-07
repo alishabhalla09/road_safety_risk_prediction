@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "time_window_seconds": 60,
+  "scaling_max": 100,
+  "weights": {
+    "traffic_density": 0.15,
+    "flow_imbalance": 0.10,
+    "wrong_way": 0.20,
+    "lane_violation": 0.10,
+    "red_light": 0.20,
+    "helmet_violation": 0.05,
+    "triple_riding": 0.05,
+    "surrogate_safety_ttc_pet": 0.15
+  },
+  "indicator_normalization_bounds": {
+    "density_max": 1.0,
+    "flow_imbalance_max": 1.0,
+    "wrong_way_max_count": 5,
+    "lane_violation_max_count": 10,
+    "red_light_max_count": 5,
+    "helmet_violation_max_count": 10,
+    "triple_riding_max_count": 5,
+    "safety_critical_events_max": 5
+  },
+  "risk_category_thresholds": {
+    "LOW": [0, 25],
+    "MEDIUM": [25, 55],
+    "HIGH": [55, 80],
+    "CRITICAL": [80, 100]
+  }
+}

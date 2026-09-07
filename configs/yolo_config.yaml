@@ -1,0 +1,23 @@
+# YOLO Model & Class Configuration for RoadGuard AI
+model_name: "yolov8m.pt"
+confidence_threshold: 0.35
+iou_threshold: 0.45
+img_size: 640
+
+# Supported Road User Classes & Mapping
+classes:
+  0: "person"
+  1: "bicycle"
+  2: "car"
+  3: "motorcycle"
+  5: "bus"
+  7: "truck"
+  9: "traffic light"
+
+custom_classes:
+  10: "auto_rickshaw"
+  11: "number_plate"
+
+device: "0" # 'cpu' or '0' for CUDA GPU
+tracker_type: "bytetrack" # 'bytetrack' or 'botsort'
+tracker_config: "configs/bytetrack.yaml"
