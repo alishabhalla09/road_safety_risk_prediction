@@ -13,7 +13,8 @@ import {
   Play,
   RotateCcw,
   Camera,
-  Radio
+  Radio,
+  Upload
 } from 'lucide-react';
 
 interface HealthStatus {
@@ -69,11 +70,13 @@ interface ChallanItem {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'traffic' | 'violations' | 'anpr' | 'safety' | 'risk' | 'experiments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'traffic' | 'violations' | 'anpr' | 'safety' | 'risk' | 'experiments' | 'headon'>('overview');
   const [streamSourceMode, setStreamSourceMode] = useState<'webcam' | 'simulated'>('webcam');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState<any>(null);
+  const [imageAnalysisResult, setImageAnalysisResult] = useState<any>(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   const [violations, setViolations] = useState<ViolationItem[]>([
     { id: 1, track_id: 12, camera_id: 'CAM_WEBCAM_01', type: 'RED_LIGHT', timestamp: new Date().toISOString(), confidence: 0.95, reason: 'Vehicle (Track #12) crossed stop line STOP_LINE_01 during RED signal.', evidence_id: 'ev_red_12', status: 'DETECTED' },
@@ -188,6 +191,30 @@ export default function App() {
       });
   };
 
+  const handleImageAnalyze = (file?: File) => {
+    setIsAnalyzingImage(true);
+    const formData = new FormData();
+    if (file) {
+      formData.append('file', file);
+    }
+    fetch('/api/analysis/image', {
+      method: 'POST',
+      body: file ? formData : undefined
+    })
+      .then(res => res.json())
+      .then(data => {
+        setIsAnalyzingImage(false);
+        setImageAnalysisResult(data);
+        fetch('/api/challans')
+          .then(r => r.json())
+          .then(ch => { if (Array.isArray(ch)) setChallans(ch); })
+          .catch(() => {});
+      })
+      .catch(() => {
+        setIsAnalyzingImage(false);
+      });
+  };
+
   const updateChallanStatus = (id: number, status: string) => {
     fetch(`/api/challans/${id}/status?status=${status}`, { method: 'PUT' })
       .then(res => res.json())
@@ -264,6 +291,7 @@ export default function App() {
           <nav className="space-y-1">
             {[
               { id: 'overview', label: 'Live Webcam & Overview', icon: Activity },
+              { id: 'headon', label: 'Head-On Snap & Auto Challan', icon: ShieldAlert },
               { id: 'traffic', label: 'Traffic Density & Flow', icon: BarChart2 },
               { id: 'violations', label: 'Violations & e-Challan', icon: AlertTriangle },
               { id: 'anpr', label: 'ANPR Intelligence', icon: Eye },
@@ -424,6 +452,170 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 2: HEAD-ON IMAGE SNAP & AUTO CHALLAN */}
+          {activeTab === 'headon' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-rose-400" /> Head-On Collision Risk Analyzer & Automated e-Challan
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Upload or select a photo of vehicles facing wrong-way/head-on. ROADGUARD AI analyzes hazard proximity, extracts ANPR plates, and automatically issues an e-Challan.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => handleImageAnalyze()}
+                    disabled={isAnalyzingImage}
+                    className="flex items-center space-x-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition border border-rose-400/30 disabled:opacity-50"
+                  >
+                    {isAnalyzingImage ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Flame className="w-4 h-4" />}
+                    <span>{isAnalyzingImage ? 'Analyzing Snapshot...' : 'Run Sample: 2 Cars Head-On Danger'}</span>
+                  </button>
+
+                  <label className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition border border-slate-700 cursor-pointer">
+                    <Upload className="w-4 h-4 text-sky-400" />
+                    <span>Upload Vehicle Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleImageAnalyze(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Analysis Result Container */}
+              {imageAnalysisResult ? (
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Left Column: Annotated Image Display */}
+                  <div className="col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <span className="text-sm font-semibold flex items-center gap-2 text-white">
+                        <Camera className="w-4 h-4 text-rose-400" />
+                        AI Annotated Collision Hazard & Bounding Boxes
+                      </span>
+                      <span className="text-xs text-rose-400 font-mono px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 rounded">
+                        PROXIMITY HAZARD DETECTED
+                      </span>
+                    </div>
+
+                    <div className="my-4 border border-slate-800 rounded-lg bg-slate-950 flex items-center justify-center min-h-[350px] overflow-hidden">
+                      <img
+                        src={imageAnalysisResult.annotated_image}
+                        alt="Head-on Collision Analysis Overlay"
+                        className="max-h-[420px] w-full object-contain rounded"
+                      />
+                    </div>
+
+                    <div className="text-xs text-slate-400 flex items-center justify-between">
+                      <span>Violation: <strong className="text-rose-400 font-mono">{imageAnalysisResult.violation.type}</strong></span>
+                      <span>Target Track: <strong className="text-sky-400 font-mono">#{imageAnalysisResult.violation.violating_track_id}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Risk Metrics & Auto e-Challan Card */}
+                  <div className="space-y-4">
+                    {/* Risk Gauge Card */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                      <div className="text-slate-400 text-xs font-medium flex justify-between">
+                        <span>Calculated Collision Risk Score</span>
+                        <Flame className="w-4 h-4 text-rose-400" />
+                      </div>
+                      <div className="text-3xl font-bold text-rose-400 mt-1">
+                        {imageAnalysisResult.risk_score.toFixed(1)} / 100
+                      </div>
+                      <div className="text-xs text-rose-400/80 mt-1 font-semibold">
+                        STATUS: {imageAnalysisResult.risk_category} RISK (HEAD-ON DANGER)
+                      </div>
+                    </div>
+
+                    {/* ANPR Recognized License Plate */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+                      <div className="text-slate-400 text-xs font-medium flex items-center justify-between">
+                        <span>ANPR License Plate OCR</span>
+                        <Eye className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                        <div className="text-[10px] text-slate-400">Violating Vehicle Plate:</div>
+                        <div className="text-lg font-mono font-bold text-emerald-400 tracking-wider">
+                          {imageAnalysisResult.anpr.violator_plate}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          Opposing Vehicle Plate: <span className="font-mono text-slate-200">{imageAnalysisResult.anpr.victim_plate}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Auto-Issued e-Challan Card */}
+                    <div className="bg-slate-900 border border-rose-500/40 rounded-xl p-4 space-y-3 bg-gradient-to-b from-rose-950/20 to-slate-900">
+                      <div className="flex items-center justify-between border-b border-rose-500/30 pb-2">
+                        <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 text-rose-400" />
+                          AUTOMATED e-CHALLAN ISSUED
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30">
+                          {imageAnalysisResult.challan.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-300">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Challan Number:</span>
+                          <span className="font-mono text-sky-400 font-bold">{imageAnalysisResult.challan.challan_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Vehicle Number:</span>
+                          <span className="font-mono text-white font-bold">{imageAnalysisResult.challan.vehicle_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Penalty Fine:</span>
+                          <span className="font-mono text-rose-400 font-bold">₹{imageAnalysisResult.challan.fine_amount || 5000}</span>
+                        </div>
+                        <p className="text-[10px] text-amber-300/90 pt-1 leading-relaxed border-t border-slate-800">
+                          {imageAnalysisResult.challan.notes}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 flex gap-2">
+                        <button
+                          onClick={() => updateChallanStatus(imageAnalysisResult.challan.id, 'RESOLVED')}
+                          className="w-full text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-1.5 rounded transition"
+                        >
+                          Mark Paid & Resolved
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center space-y-4">
+                  <div className="inline-p-4 bg-slate-800/80 rounded-full border border-slate-700 text-rose-400">
+                    <ShieldAlert className="w-10 h-10 mx-auto" />
+                  </div>
+                  <h3 className="text-base font-bold text-white">No Image Analyzed Yet</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                    Click <strong>"Run Sample: 2 Cars Head-On Danger"</strong> or upload any vehicle picture to test the AI risk analysis, ANPR license plate OCR, and automated e-Challan issuance engine.
+                  </p>
+                  <button
+                    onClick={() => handleImageAnalyze()}
+                    className="inline-flex items-center space-x-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-6 py-2.5 rounded-lg transition border border-rose-400/30"
+                  >
+                    <Flame className="w-4 h-4" />
+                    <span>Run Head-On Danger Sample Now</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

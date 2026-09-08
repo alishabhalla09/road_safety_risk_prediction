@@ -26,6 +26,7 @@ from backend.app.schemas import (
 )
 from backend.app.services.challan_service import ChallanService
 from backend.app.services.detection_service import DetectionService
+from backend.app.services.image_analysis_service import ImageAnalysisService
 from backend.app.services.live_camera_service import LiveCameraService
 from backend.app.services.pipeline_orchestrator import PipelineOrchestrator
 from backend.app.services.video_service import VideoService
@@ -167,6 +168,19 @@ def start_analysis(
         sample_stride=sample_stride,
         force_mock=force_mock
     )
+
+
+@router.post("/analysis/image", tags=["Analysis"])
+async def analyze_image_snap(
+    file: UploadFile | None = None,
+    db: Session = Depends(get_db)
+):
+    """Analyze static image snap (e.g. 2 cars facing wrong-way/head-on), compute risk score, recognize plate, & auto-cut e-Challan."""
+    image_bytes = None
+    if file:
+        image_bytes = await file.read()
+
+    return ImageAnalysisService.analyze_image(image_bytes=image_bytes, db=db)
 
 
 @router.get("/videos/{video_id}/detections", response_model=list[DetectionResponse], tags=["Analysis"])
