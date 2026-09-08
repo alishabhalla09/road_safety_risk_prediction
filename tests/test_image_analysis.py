@@ -18,7 +18,7 @@ def test_image_analysis_service_synthetic():
 
 
 def test_image_analysis_api_endpoint(db_session):
-    response = client.post("/api/analysis/image")
+    response = client.post("/analysis/image")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "SUCCESS"
