@@ -159,6 +159,11 @@ export default function App() {
       });
   };
 
+  const [manualPlate, setManualPlate] = useState('KA-01-MJ-8821');
+  const [manualType, setManualType] = useState('RED_LIGHT');
+  const [manualNotes, setManualNotes] = useState('Red-Light Signal Violation Notice - Fine ₹1,000');
+  const [isIssuingDirect, setIsIssuingDirect] = useState(false);
+
   const generateChallan = (v: ViolationItem) => {
     const matchedPlate = plates.find(p => p.track_id === v.track_id)?.plate_text || 'KA-05-XY-9999';
     fetch('/api/challans', {
@@ -170,15 +175,19 @@ export default function App() {
         notes: 'ACADEMIC SIMULATION ONLY - NO LEGAL VALIDITY'
       })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('API Error');
+        return res.json();
+      })
       .then(data => {
         if (data && data.id) {
-          setChallans([data, ...challans]);
+          setChallans(prev => [data, ...prev.filter(c => c.id !== data.id)]);
+          alert(`Success! e-Challan ${data.challan_number} generated for ${data.vehicle_number}`);
         }
       })
       .catch(() => {
         const newChallan: ChallanItem = {
-          id: challans.length + 1,
+          id: challans.length + 100,
           violation_id: v.id,
           challan_number: `CH-${Date.now().toString().slice(-6)}-${v.id}`,
           vehicle_number: matchedPlate,
@@ -187,7 +196,52 @@ export default function App() {
           status: 'GENERATED',
           notes: 'ACADEMIC SIMULATION ONLY - NO LEGAL VALIDITY'
         };
-        setChallans([newChallan, ...challans]);
+        setChallans(prev => [newChallan, ...prev]);
+        alert(`Success! e-Challan ${newChallan.challan_number} generated for ${newChallan.vehicle_number}`);
+      });
+  };
+
+  const handleDirectIssueChallan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualPlate.trim()) {
+      alert('Please enter a valid vehicle plate number!');
+      return;
+    }
+    setIsIssuingDirect(true);
+    const formData = new FormData();
+    formData.append('vehicle_number', manualPlate.trim());
+    formData.append('violation_type', manualType);
+    formData.append('notes', manualNotes || 'Direct Traffic e-Challan Issued');
+
+    fetch('/api/challans/direct', {
+      method: 'POST',
+      body: formData
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('API Error');
+        return res.json();
+      })
+      .then(data => {
+        setIsIssuingDirect(false);
+        if (data && data.id) {
+          setChallans(prev => [data, ...prev]);
+          alert(`e-Challan ${data.challan_number} Successfully Cut for Vehicle ${data.vehicle_number}!`);
+        }
+      })
+      .catch(() => {
+        setIsIssuingDirect(false);
+        const fallbackChallan: ChallanItem = {
+          id: Date.now(),
+          violation_id: Date.now() % 1000,
+          challan_number: `CH-${Date.now().toString().slice(-6)}-DIR`,
+          vehicle_number: manualPlate.trim().toUpperCase(),
+          type: manualType,
+          timestamp: new Date().toISOString(),
+          status: 'GENERATED',
+          notes: manualNotes || 'Direct Traffic e-Challan Issued'
+        };
+        setChallans(prev => [fallbackChallan, ...prev]);
+        alert(`e-Challan ${fallbackChallan.challan_number} Successfully Cut for Vehicle ${fallbackChallan.vehicle_number}!`);
       });
   };
 
@@ -724,8 +778,62 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Direct Issue e-Challan Form */}
+              <div className="bg-slate-900 border border-rose-500/30 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-semibold text-rose-300 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> Direct Issue e-Challan
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Vehicle / Plate Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MH12AB1234"
+                      value={manualPlate}
+                      onChange={e => setManualPlate(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Violation Type</label>
+                    <select
+                      value={manualType}
+                      onChange={e => setManualType(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="WRONG_WAY">WRONG_WAY</option>
+                      <option value="RED_LIGHT">RED_LIGHT</option>
+                      <option value="NO_HELMET">NO_HELMET</option>
+                      <option value="TRIPLE_RIDING">TRIPLE_RIDING</option>
+                      <option value="SPEEDING">SPEEDING</option>
+                      <option value="HEAD_ON_RISK">HEAD_ON_RISK</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Notes (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Officer notes..."
+                      value={manualNotes}
+                      onChange={e => setManualNotes(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleDirectIssueChallan}
+                    disabled={isIssuingDirect || !manualPlate}
+                    className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition"
+                  >
+                    {isIssuingDirect ? 'Issuing…' : '⚡ Cut e-Challan Now'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+
 
           {/* TAB 4: ANPR INTELLIGENCE */}
           {activeTab === 'anpr' && (

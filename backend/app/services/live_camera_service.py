@@ -17,6 +17,8 @@ from ai.traffic.traffic_engine import TrafficEngine
 from ai.trajectory.trajectory_engine import TrajectoryEngine
 from ai.violations.motorcycle_safety import MotorcycleSafetyEngine
 from ai.violations.violation_engine import SceneViolationEngine
+from backend.app.db.database import SessionLocal
+from backend.app.services.challan_service import ChallanService
 
 logger = logging.getLogger("roadguard.live_camera")
 
@@ -162,6 +164,7 @@ class LiveCameraService:
         frame_no = 0
         start_time = time.time()
         crossed_track_history = {}
+        auto_issued_challans: set[tuple[int, str]] = set()  # tracks (track_id, violation_type) already issued
 
         cls._active_sessions[camera_id] = {
             "status": "RUNNING",
@@ -223,7 +226,26 @@ class LiveCameraService:
                 )
                 current_violations = v_events + m_events
 
-                # 6. ANPR Processing
+                # AUTO E-CHALLAN: Issue immediately when a new violation is detected on camera
+                for ve in current_violations:
+                    key = (ve.track_id, ve.type)
+                    if key not in auto_issued_challans:
+                        auto_issued_challans.add(key)
+                        try:
+                            db_sess = SessionLocal()
+                            ChallanService.issue_direct_challan(
+                                vehicle_number=f"CAM-TRK-{ve.track_id}",
+                                violation_type=ve.type,
+                                db=db_sess,
+                                camera_id=camera_id,
+                                notes=f"[AUTO] {ve.reason}"
+                            )
+                            db_sess.close()
+                            logger.info(f"Auto e-Challan issued: track={ve.track_id} type={ve.type}")
+                        except Exception as exc:
+                            logger.warning(f"Auto-challan failed for track {ve.track_id}: {exc}")
+
+
                 current_plates = []
                 for tstate in active_tracks:
                     if tstate.class_name in ["car", "bus", "truck", "motorcycle", "auto_rickshaw"]:

@@ -1,9 +1,10 @@
-__pycache__/
-*.py[cod]
-.venv/
 node_modules/
-frontend/node_modules/
-frontend/dist/
+__pycache__/
+*.pyc
 .pytest_cache/
 .ruff_cache/
+.venv/
+*.egg-info/
+dist/
 roadguard.db
+data/storage/videos/

@@ -342,6 +342,22 @@ def create_challan(challan: ChallanCreate, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/challans/direct", response_model=ChallanResponse, tags=["e-Challan"])
+def issue_direct_challan(
+    vehicle_number: str = Form(...),
+    violation_type: str = Form("RED_LIGHT"),
+    notes: str | None = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Directly issue/cut an e-Challan for any vehicle plate number."""
+    return ChallanService.issue_direct_challan(
+        vehicle_number=vehicle_number,
+        violation_type=violation_type,
+        notes=notes,
+        db=db
+    )
+
+
 @router.put("/challans/{challan_id}/status", response_model=ChallanResponse, tags=["e-Challan"])
 def update_challan_status(challan_id: int, status: str, db: Session = Depends(get_db)):
     """Update e-Challan status (GENERATED -> UNDER_REVIEW -> RESOLVED / CANCELLED)."""
